@@ -369,7 +369,7 @@ class JoystickThread(QThread):
             rumble_freq = max(abs(left_thumbstick_left_right), abs(left_thumbstick_up_down), abs(
                 right_thumbstick_left_right), abs(right_thumbstick_up_down))
             # Rumble joystick
-            self.__joystick.rumble(0, abs(rumble_freq), 1)
+            # self.__joystick.rumble(0, abs(rumble_freq), 1)
 
             # Send data to Arduino on separate thread so that we don't have blocking issues.
             # We can only send data every ARDUINO_SEND_TIMER_MIN seconds so that the Arduino can process the data correctly.
