@@ -2,7 +2,8 @@
 #include <Servo.h>
 
 Servo left, right, leftUp, rightUp;
-const byte pins[4] = {26, 24, 22, 28}; // Left, Right, LeftUp, RightUp
+const byte pins[4] = {26, 27, 22, 28}; // Left, Right, LeftUp, RightUp
+// 26, 29, 22, 28
 
 void setup() {
   Serial.begin(9600);
