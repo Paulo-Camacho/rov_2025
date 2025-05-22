@@ -143,6 +143,20 @@ class ArduinoWriteWorker(QObject):
                 except Exception as e:
                     logger.critical(f"Error writing to Arduino: {e}")
             time.sleep(0.1)  # Small delay to avoid busy waiting
+        import queue as _queue
+        while self.running:
+            try:
+                # block up to 20ms for next packet, otherwise loop to check running flag
+                data = self.queue.get(timeout=0.02)
+            except _queue.Empty:
+                continue
+            try:
+                payload = json.dumps(data) + '\0'
+                self.serial_port.write(payload.encode('utf-8'))
+                self.serial_port.flush()
+            except Exception as e:
+                logger.critical(f"Error writing to Arduino: {e}")
+
 
 
 class ArduinoThread(QThread):
