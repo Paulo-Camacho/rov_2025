@@ -1,0 +1,50 @@
+# ─── Python artifacts ─────────────────────────────────────────────────────────
+
+# Byte-compiled / optimized / DLL files
+**/__pycache__/
+**/*.py[cod]
+**/*$py.class
+
+# Virtual environments (global or per-folder)
+**/.venv/
+**/venv/
+**/env/
+.env/
+
+# Logs and databases
+*.log
+*.sqlite3
+
+# ─── IDE / editor junk ────────────────────────────────────────────────────────
+
+# VSCode
+**/.vscode/
+
+# JetBrains
+**/.idea/
+
+# Mac / Windows system files
+.DS_Store
+Thumbs.db
+
+# ─── Arduino build artifacts ──────────────────────────────────────────────────
+
+# (only if you ever compile inside arduino/)
+arduino/*.hex
+arduino/*.elf
+arduino/*.bin
+arduino/*.eep
+arduino/*.map
+arduino/*.lst
+
+# ─── Distribution / packaging ─────────────────────────────────────────────────
+
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# ─── Test caches & misc ───────────────────────────────────────────────────────
+
+**/.pytest_cache/
+temp/
