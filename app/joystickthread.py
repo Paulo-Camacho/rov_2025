@@ -364,6 +364,17 @@ class JoystickThread(QThread):
                     right_trigger
                 ]
             }
+
+           # ++++++++++++++++++++++++++++++++++++++ # 
+            if   right_trigger >  0.1:
+                claw_pw = 1900    # open
+            elif left_trigger  >  0.1:
+                claw_pw = 1100    # close
+            else:
+                claw_pw = 1500    # hold
+            to_arduino["claw"] = claw_pw
+
+
             # Determine the rumble frequency for the joystick.
             # Finds the highest value out of all of the joystick thumbstick axes to determine rumble frequency.
             rumble_freq = max(abs(left_thumbstick_left_right), abs(left_thumbstick_up_down), abs(
