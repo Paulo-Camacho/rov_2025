@@ -5,7 +5,7 @@ Servo left, right, leftUp, rightUp;
 const byte pins[4] = {26, 24, 22, 28};  // Left, Right, LeftUp, RightUp
 
 Servo claw;
-const byte clawPin = 29;
+const byte clawPin = 29; // Correct pin out for claw(j9)
 
 void setup() {
   Serial.begin(9600);
