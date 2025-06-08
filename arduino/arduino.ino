@@ -1,53 +1,66 @@
 #include <ArduinoJson.h>
 #include <Servo.h>
 
-Servo left, right, leftUp, rightUp;
-const byte pins[4] = {26, 24, 22, 28};  // Left, Right, LeftUp, RightUp
+// Defining servos for discrete thruster control
+Servo leftThruster;
+Servo rightThruster;
+Servo leftUpThruster;
+Servo rightUpThruster;
 
+// Claw servo
 Servo claw;
-const byte clawPin = 29; // Correct pin out for claw(j9)
+const byte clawPin = 29; // J9
+
+// Explicit thruster pin assignments
+const byte leftThrusterPin = 26;
+const byte rightThrusterPin = 24;
+const byte leftUpThrusterPin = 22;
+const byte rightUpThrusterPin = 28;
 
 void setup() {
   Serial.begin(9600);
 
-  // Attach thruster servos and set to neutral
-  for (int i = 0; i < 4; i++) {
-    Servo &s = (i == 0 ? left : i == 1 ? right : i == 2 ? leftUp : rightUp);
-    s.attach(pins[i]);
-    s.writeMicroseconds(1500);
-  }
+  // Attach each thruster individually
+  leftThruster.attach(leftThrusterPin);
+  leftThruster.writeMicroseconds(1500);
 
-  // Attach claw servo and set to neutral
+  rightThruster.attach(rightThrusterPin);
+  rightThruster.writeMicroseconds(1500);
+
+  leftUpThruster.attach(leftUpThrusterPin);
+  leftUpThruster.writeMicroseconds(1500);
+
+  rightUpThruster.attach(rightUpThrusterPin);
+  rightUpThruster.writeMicroseconds(1500);
+
+  // Claw setup
   claw.attach(clawPin);
   claw.writeMicroseconds(1500);
 
-  delay(7000);  // Allow ESCs and claw to calibrate
+  delay(7000);  // ESC and claw calibration time
 }
 
 void loop() {
   if (!Serial.available()) return;
 
-  // Read a null-terminated JSON string from Serial
   String json = Serial.readStringUntil('\0');
-  StaticJsonDocument<200> doc;
-  if (deserializeJson(doc, json)) return;  // drop invalid JSON
+  StaticJsonDocument<300> doc;
+  if (deserializeJson(doc, json)) return;
 
-  // Update thruster servos
   JsonArray axis = doc["axisInfo"];
-  left.writeMicroseconds(axis[0]);
-  right.writeMicroseconds(axis[1]);
-  leftUp.writeMicroseconds(axis[2]);
-  rightUp.writeMicroseconds(axis[3]);
-
-  // Control claw if present in message
-  if (doc.containsKey("claw")) {
-    int cw = doc["claw"];
-    claw.writeMicroseconds(cw);
+  if (axis.size() >= 4) { // Adjusted for only four thrusters
+    leftThruster.writeMicroseconds(axis[0]);
+    rightThruster.writeMicroseconds(axis[1]);
+    leftUpThruster.writeMicroseconds(axis[2]);
+    rightUpThruster.writeMicroseconds(axis[3]);
   }
 
-  // Send acknowledgment back to Python
+  if (doc.containsKey("claw")) {
+    claw.writeMicroseconds(doc["claw"]);
+  }
+
   StaticJsonDocument<50> ack;
   ack["status"] = "OK";
   serializeJson(ack, Serial);
-  Serial.print('\n');  // newline for Python readline()
+  Serial.print('\n');
 }

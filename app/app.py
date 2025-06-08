@@ -107,7 +107,7 @@ class Main(QMainWindow):
             self.__status_bar.addWidget(QLabel(text=" | "))
 
         # <3
-        self.__status_bar.addWidget(QLabel(text="Made with ❤️"))
+        self.__status_bar.addWidget(QLabel(text="️Paulo"))
 
         self.setCentralWidget(self.__container)
         self.setStatusBar(self.__status_bar)
