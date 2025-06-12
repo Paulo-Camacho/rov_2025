@@ -2,7 +2,6 @@ from PyQt5.QtCore import pyqtSignal, QThread, QTimer, pyqtSlot
 import pygame
 import logging
 import coloredlogs
-import _thread as thread
 import time
 
 coloredlogs.install(level=logging.DEBUG)
@@ -14,7 +13,6 @@ RESTING_PULSEWIDTH = 1500.00
 DEADZONE_MIN = 0.75
 PWM_DEADZONE_MIN = 0.1
 ARDUINO_SEND_TIMER_MIN = 0.5
-
 
 class JoystickThread(QThread):
     joystick_change_signal = pyqtSignal(dict)
@@ -33,6 +31,9 @@ class JoystickThread(QThread):
         self.__video_thread = video_thread
 
         self.__last_sent_time = time.time()
+
+        self.claw_pw = 1500  # Neutral hold position for first claw
+        self.claw2_pw = 1500  # Neutral hold position for second claw
 
         pygame.init()
 
@@ -64,13 +65,10 @@ class JoystickThread(QThread):
             self._wait_for_joystick_timer.stop()
 
     def _initialize_joystick(self):
-
         self.__joystick = pygame.joystick.Joystick(0)
         self.__joystick.init()
-
         logger.info(f"Joystick found! Name: {self.__joystick.get_name()}")
-        self.__connection_status_bar.setText(
-            f"Joystick ({self.__joystick.get_name()}) connected")
+        self.__connection_status_bar.setText(f"Joystick ({self.__joystick.get_name()}) connected")
         self.__connection_status_bar.setStyleSheet(GREEN_TEXT_CSS)
 
     @pyqtSlot(dict)
@@ -85,227 +83,150 @@ class JoystickThread(QThread):
         if self.__joystick is not None and pygame.joystick.get_count() > 0:
             pygame.event.pump()
 
-
-
-            # Left joystick:
-            #     Axis 0 → Left/Right movement (X-axis)
-            #     Axis 1 → Up/Down movement (Y-axis)
-            # Right joystick:
-            #     Axis 3 → Left/Right movement (X-axis)
-            #     Axis 4 → Up/Down movement (Y-axis)
-
-            left_trigger = self.__joystick.get_axis(2)
-            right_trigger = self.__joystick.get_axis(5)
-
-            # This controls the VERTICAL TWO TOP THRUSTERS and in parrallel makes them go and down
-            right_horizontal_thumbstick = self.__joystick.get_axis(4) 
-            # This is controlling H Left right now
-            left_horizontal_thumbstick = self.__joystick.get_axis(0)
-
-            left_thumbstick_up_down = self.__joystick.get_axis(1) 
-            right_thumbstick_left_right = self.__joystick.get_axis(3)
-
+            # Get values for triggers and bumpers (these remain untouched)
+            left_trigger = self.__joystick.get_axis(2) or 0
+            right_trigger = self.__joystick.get_axis(5) or 0
+            left_bumper = self.__joystick.get_button(4)   # Claw2 close
+            right_bumper = self.__joystick.get_button(5)  # Claw2 open
 
             for event in pygame.event.get():
-                if event.type == pygame.JOYBUTTONDOWN and event.button == 4:
+                if event.type == pygame.JOYBUTTONDOWN and event.button == 3:  # Y button for screenshot
                     self.__video_thread.save_screenshot()
 
-            if abs(right_horizontal_thumbstick) < DEADZONE_MIN:
-                right_horizontal_thumbstick = 0
-            if abs(left_thumbstick_up_down) < DEADZONE_MIN:
-                left_thumbstick_up_down = 0
-            if abs(right_thumbstick_left_right) < DEADZONE_MIN:
-                right_thumbstick_left_right = 0
-            if abs(left_horizontal_thumbstick) < DEADZONE_MIN:
-                left_horizontal_thumbstick = 0
+            # === Thruster Axis Mappings ===
+            # Horizontal thruster control:
+            #   - Common base value from Axis 1.
+            #   - Differential control from Axis 0.
+            horizontal_base = self.__joystick.get_axis(1) or 0
+            h_discrete = self.__joystick.get_axis(0) or 0
 
+            # Vertical (top) thruster control:
+            #   - Common base value from Axis 4.
+            #   - Differential control from Axis 3.
+            vertical_base = self.__joystick.get_axis(4) or 0
+            v_discrete = self.__joystick.get_axis(3) or 0
+
+            # Build a dictionary with our axis inputs.
             axis_info = {
-            "tLeft_LeftRight": right_horizontal_thumbstick,  
-            "tLeft_UpDown": left_thumbstick_up_down,        
-            "tRight_LeftRight": right_thumbstick_left_right,
-            "tRight_UpDown": left_horizontal_thumbstick
-            } 
+                "horizontal": horizontal_base,
+                "vertical": vertical_base,
+                "h_discrete": h_discrete,
+                "v_discrete": v_discrete
+            }
 
+            # Calculate thruster pulsewidths using our mapping functions.
             pulsewidths = self.__calculate_pulsewidth(axis_info)
             self.__update_thrust_labels(pulsewidths)
 
-            joystick_info = {
-                "connected": "True",
-                "joystickName": self.__joystick.get_name(),
-                "axisInfo": [
-                    pulsewidths.get("forward_backward_pulsewidth"),
-                    pulsewidths.get("left_pulsewidth"),
-                    pulsewidths.get("right_pulsewidth"),
-                    pulsewidths.get("ascend_descend_pulsewidth"),
-                    pulsewidths.get("pitch_left_pulsewidth"),
-                    pulsewidths.get("pitch_right_pulsewidth")
-                ]
-            }
+            # Build JSON data for Arduino.
             to_arduino = {
                 "axisInfo": [
-                    pulsewidths.get("forward_backward_pulsewidth"),
-                    pulsewidths.get("left_pulsewidth"),
-                    pulsewidths.get("right_pulsewidth"),
-                    pulsewidths.get("ascend_descend_pulsewidth"),
-                    pulsewidths.get("pitch_left_pulsewidth"),
-                    pulsewidths.get("pitch_right_pulsewidth")
+                    pulsewidths.get("leftthruster"),
+                    pulsewidths.get("rightthruster"),
+                    pulsewidths.get("topleftthruster"),
+                    pulsewidths.get("toprightthruster")
                 ],
                 "left_trigger": left_trigger,
                 "right_trigger": right_trigger
             }
 
-            if right_trigger >  0.1:
-                claw_pw = 4000 # open
-            elif left_trigger  >  0.1:
-                claw_pw = 1500   # close
+            # --- Claw Control (Triggers remain unchanged) ---
+            if right_trigger > 0.1:
+                self.claw_pw = 2100  # Open claw fully
+                logger.debug(f"Right Trigger Pressed: Claw Opening to {self.claw_pw}")
+            elif left_trigger > 0.1:
+                self.claw_pw = 1100  # Close claw fully
+                logger.debug(f"Left Trigger Pressed: Claw Closing to {self.claw_pw}")
             else:
-                claw_pw = 1500   # hold
-            to_arduino["claw"] = claw_pw
+                self.claw_pw = 1500  # Hold position
+                logger.debug(f"No Trigger Pressed: Claw Holding at {self.claw_pw}")
 
+            # --- Claw2 Control (Bumpers remain unchanged) ---
+            if right_bumper:
+                self.claw2_pw = 2100  # Fully open
+                logger.debug(f"Right Bumper Pressed: Claw2 Opening to {self.claw2_pw}")
+            elif left_bumper:
+                self.claw2_pw = 1100  # Fully close
+                logger.debug(f"Left Bumper Pressed: Claw2 Closing to {self.claw2_pw}")
+            else:
+                self.claw2_pw = 1500  # Hold position
+                logger.debug(f"No Bumper Pressed: Claw2 Holding at {self.claw2_pw}")
+
+            to_arduino["claw"] = self.claw_pw
+            to_arduino["claw2"] = self.claw2_pw
 
             current_time = time.time()
             if current_time - self.__last_sent_time > ARDUINO_SEND_TIMER_MIN:
                 self.__arduino_thread.handle_data(to_arduino)
                 self.__last_sent_time = current_time
 
+            # Emit joystick info signal.
+            joystick_info = {
+                "connected": "True",
+                "joystickName": self.__joystick.get_name(),
+                "axisInfo": to_arduino["axisInfo"]
+            }
             self.joystick_change_signal.emit(joystick_info)
         else:
             self.joystick_change_signal.emit({"connected": False})
-            self.__connection_status_bar.setText(f"Joystick disconnected")
+            self.__connection_status_bar.setText("Joystick disconnected")
             self.__connection_status_bar.setStyleSheet(RED_TEXT_CSS)
             self._wait_for_joystick()
-    # 1100: Full reverse thrust
-    # 1500: No thrust
-    # 1900: Full forward thrust
+
     def __calculate_pulsewidth(self, axis_info):
+        # Convert the base axis values to PWM.
+        horizontal_base = self.__map_to_pwm(axis_info.get("horizontal"))
+        vertical_base = self.__map_to_pwm(axis_info.get("vertical"))
+        # Calculate the differential offsets.
+        h_offset = self.__map_to_differential(axis_info.get("h_discrete"))
+        v_offset = self.__map_to_differential(axis_info.get("v_discrete"))
 
-        right_horizontal_thumbstick = axis_info.get("tLeft_LeftRight")
-        left_thumbstick_up_down = axis_info.get("tLeft_UpDown")
-        right_thumbstick_left_right = axis_info.get("tRight_LeftRight")
-        left_horizontal_thumbstick = axis_info.get("tRight_UpDown")
-
-        forward_backward_pulsewidth = RESTING_PULSEWIDTH
-        left_pulsewidth = RESTING_PULSEWIDTH
-        right_pulsewidth = RESTING_PULSEWIDTH
-        ascend_descend_pulsewidth = RESTING_PULSEWIDTH
-        pitch_left_pulsewidth = RESTING_PULSEWIDTH
-        pitch_right_pulsewidth = RESTING_PULSEWIDTH
-
-        if left_thumbstick_up_down < 0:
-            forward_backward_pulsewidth = self.__map_to_pwm(
-                left_thumbstick_up_down)
-        elif left_thumbstick_up_down > 0:
-            forward_backward_pulsewidth = self.__map_to_pwm(
-                left_thumbstick_up_down)
-
-        if right_horizontal_thumbstick < 0:
-            left_pulsewidth = self.__map_to_pwm(right_horizontal_thumbstick)
-            right_pulsewidth = self.__map_to_pwm(
-                -right_horizontal_thumbstick)
-        elif right_horizontal_thumbstick > 0:
-            left_pulsewidth = self.__map_to_pwm(right_horizontal_thumbstick)
-            right_pulsewidth = self.__map_to_pwm(
-                -right_horizontal_thumbstick)
-
-        if left_horizontal_thumbstick < 0:  # Thumbstick down (descend)
-            ascend_descend_pulsewidth = self.__map_to_pwm(
-                left_horizontal_thumbstick)
+        # --- Horizontal Thrusters ---
+        # Apply discrete (asymmetrical) control:
+        # If h_offset is positive, only adjust the right thruster.
+        # If h_offset is negative, only adjust the left thruster.
+        if h_offset >= 0:
+            left_thruster = horizontal_base         # remains at base
+            right_thruster = horizontal_base - h_offset  # adjusted downward
         else:
-            ascend_descend_pulsewidth = self.__map_to_pwm(
-                left_horizontal_thumbstick)
+            left_thruster = horizontal_base + abs(h_offset) # adjusted upward
+            right_thruster = horizontal_base         # remains at base
 
-        if right_thumbstick_left_right < 0:  # Pitch ccw
-            pitch_left_pulsewidth = self.__map_to_pwm(
-                right_thumbstick_left_right)
-            pitch_right_pulsewidth = self.__map_to_pwm(
-                -right_thumbstick_left_right)
+        # --- Vertical (Top) Thrusters ---
+        # Use the same asymmetrical approach:
+        if v_offset >= 0:
+            topleft_thruster = vertical_base             # remains at base
+            topright_thruster = vertical_base - v_offset   # adjusted downward
         else:
-            pitch_left_pulsewidth = self.__map_to_pwm(
-                right_thumbstick_left_right)
-            pitch_right_pulsewidth = self.__map_to_pwm(
-                -right_thumbstick_left_right)
-
-        forward_backward_pulsewidth = round(forward_backward_pulsewidth)
-        left_pulsewidth = round(left_pulsewidth)
-        right_pulsewidth = round(right_pulsewidth)
-        ascend_descend_pulsewidth = round(ascend_descend_pulsewidth)
-        pitch_left_pulsewidth = round(pitch_left_pulsewidth)
-        pitch_right_pulsewidth = round(pitch_right_pulsewidth)
+            topleft_thruster = vertical_base + abs(v_offset) # adjusted upward
+            topright_thruster = vertical_base             # remains at base
 
         return {
-            "forward_backward_pulsewidth": round(forward_backward_pulsewidth),
-            "left_pulsewidth": round(left_pulsewidth),
-            "right_pulsewidth": round(right_pulsewidth),
-            "ascend_descend_pulsewidth": round(ascend_descend_pulsewidth),
-            "pitch_left_pulsewidth": round(pitch_left_pulsewidth),
-            "pitch_right_pulsewidth": round(pitch_right_pulsewidth)
+            "leftthruster": round(left_thruster),
+            "rightthruster": round(right_thruster),
+            "topleftthruster": round(topleft_thruster),
+            "toprightthruster": round(topright_thruster)
         }
 
     def __map_to_pwm(self, val):
-        if val >= -PWM_DEADZONE_MIN and val <= PWM_DEADZONE_MIN:
+        # Map a joystick value in [-1, 1] to a PWM pulsewidth.
+        if val is None or (val >= -PWM_DEADZONE_MIN and val <= PWM_DEADZONE_MIN):
             return 1500
         else:
-            return 400*(val + 1) + 1100
+            return 400 * (val + 1) + 1100
+
+    def __map_to_differential(self, val):
+        # Increase deadzone for differential inputs to ignore small noise.
+        if val is None or abs(val) < 0.05:
+            return 0
+        else:
+            return self.__map_to_pwm(val) - 1500
 
     def __update_thrust_labels(self, pulsewidths):
-        forward_backward_thrust_label_text = None
-        vertical_thrust_label_text = None
-        left_right_thrust_label_text = None
-        pitch_thrust_label_text = None
-
-        fb_pw = pulsewidths.get("forward_backward_pulsewidth")
-        v_pw = pulsewidths.get("ascend_descend_pulsewidth")
-        l_pw = pulsewidths.get("left_pulsewidth")
-        r_pw = pulsewidths.get("right_pulsewidth")
-        pl_pw = pulsewidths.get("pitch_left_pulsewidth")
-        pr_pw = pulsewidths.get("pitch_right_pulsewidth")
-
-        if fb_pw < 1500:
-            fb_pw_percent = (fb_pw/1100.0)*100.0
-            forward_backward_thrust_label_text = "Backward" + \
-                f" ({fb_pw_percent:.2f}% power)"
-        elif fb_pw == 1500:
-            forward_backward_thrust_label_text = "0.00% power"
-        else:
-            fb_pw_percent = (fb_pw/1900.0)*100.0
-            forward_backward_thrust_label_text = "Forward" + \
-                f" ({fb_pw_percent:.2f}% power)"
-
-        if v_pw < 1500:
-            v_pw_percent = (v_pw/1100.0)*100.0
-            vertical_thrust_label_text = "Downward" + \
-                f" ({v_pw_percent:.2f}% power)"
-        elif v_pw == 1500:
-            vertical_thrust_label_text = "0.00% power"
-        else:
-            v_pw_percent = (v_pw/1900.0)*100.0
-            vertical_thrust_label_text = "Upward" + \
-                f" ({v_pw_percent:.2f}% power)"
-
-        if l_pw < r_pw:
-            l_r_percent = (r_pw/1900.0)*100.0
-            left_right_thrust_label_text = "Left" + \
-                f" ({l_r_percent:.2f}% power)"
-        elif l_pw == 1500 and r_pw == 1500 or l_pw == r_pw:
-            left_right_thrust_label_text = "0.00% power"
-        else:
-            l_r_percent = (l_pw/1900.0)*100.0
-            left_right_thrust_label_text = "Right" + \
-                f" ({l_r_percent:.2f}% power)"
-
-        if pl_pw < pr_pw:
-            p_percent = (pr_pw/1900.0)*100.0
-            pitch_thrust_label_text = "CCW" + f" ({p_percent:.2f}% power)"
-        elif pl_pw == 1500 and pr_pw == 1500 or pl_pw == pr_pw:
-            pitch_thrust_label_text = "0.00% power"
-        else:
-            p_percent = (pl_pw/1900.0)*100.0
-            pitch_thrust_label_text = "CW" + f" ({p_percent:.2f}% power)"
-
-        self.__forward_backward_thrust_label.setText(
-            forward_backward_thrust_label_text)
-        self.__vertical_thrust_label.setText(
-            vertical_thrust_label_text)
+        # Update your GUI labels as desired.
         self.__left_right_thrust_label.setText(
-            left_right_thrust_label_text)
-        self.__pitch_thrust_label.setText(pitch_thrust_label_text)
+            f"Left Thruster: {pulsewidths.get('leftthruster')}, Right Thruster: {pulsewidths.get('rightthruster')}"
+        )
+        self.__vertical_thrust_label.setText(
+            f"Top Left: {pulsewidths.get('topleftthruster')}, Top Right: {pulsewidths.get('toprightthruster')}"
+        )

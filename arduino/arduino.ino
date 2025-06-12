@@ -11,6 +11,9 @@ Servo rightUpThruster;
 Servo claw;
 const byte clawPin = 29; // J9
 
+Servo claw2;  // Second claw servo
+const byte claw2Pin = 25; 
+
 // Explicit thruster pin assignments
 const byte leftThrusterPin = 26;
 const byte rightThrusterPin = 24;
@@ -36,6 +39,9 @@ void setup() {
   // Claw setup
   claw.attach(clawPin);
   claw.writeMicroseconds(1500);
+  // Attach second claw servo (on J7 / pin 27)
+  claw2.attach(claw2Pin);
+  claw2.writeMicroseconds(1500); // Neutral position
 
   delay(7000);  // ESC and claw calibration time
 }
@@ -48,15 +54,18 @@ void loop() {
   if (deserializeJson(doc, json)) return;
 
   JsonArray axis = doc["axisInfo"];
-  if (axis.size() >= 4) { // Adjusted for only four thrusters
-    leftThruster.writeMicroseconds(axis[0]);
-    rightThruster.writeMicroseconds(axis[1]);
-    leftUpThruster.writeMicroseconds(axis[2]);
-    rightUpThruster.writeMicroseconds(axis[3]);
+  if (axis.size() >= 4) { 
+    leftThruster.writeMicroseconds(axis[0]);  // Horizontal thrusters (Axis 1)
+    rightThruster.writeMicroseconds(axis[1]); // Horizontal thrusters (Axis 1)
+    leftUpThruster.writeMicroseconds(axis[2]); // Top vertical thrusters (Axis 4)
+    rightUpThruster.writeMicroseconds(axis[3]); // Top vertical thrusters (Axis 4)
   }
-
   if (doc.containsKey("claw")) {
     claw.writeMicroseconds(doc["claw"]);
+  }
+
+  if (doc.containsKey("claw2")) {  
+    claw2.writeMicroseconds(doc["claw2"]);  // Control second claw
   }
 
   StaticJsonDocument<50> ack;
