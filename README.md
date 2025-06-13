@@ -1,28 +1,54 @@
 # Arduino Mega ROV
 
-- This is code from jdremi that was written in-house for the Deep Sea Dogs ROV "T.O.A.S.T."
+This code powers the ROV's thrusters, sensors, and user interface, optimizing hardware-software 
+integration.
 
-### Requirements
 
-- Python 3.12.3.
-- Full installation of dependencies, make sure to run this within the root folder of the project
-(`pip install -r requirements.txt`).
+## Requirements
 
-### Running
+Ensure you have the following installed before running the project:
 
-- Navigate to the /app directory and run the program by typing `python ./gui/app.py` OR navigate to the `gui` directory and then 
-run by typing `python ./app.py`. Make sure you are doing this while inside of a virtual python environment.
+    Python 3.12.3
 
-## Trouble shooting
-- 
-#### 1. Remove broken .venv folder if it exists
-rm -rf .venv
+    All dependencies (install using the command below in the project's root folder):
 
-#### 2. Create a fresh virtual environment
-python3 -m venv .venv
-
-#### 3. Activate the environment
-source .venv/bin/activate
-
-#### 4. Install packages
+~~~
 pip install -r requirements.txt
+~~~
+
+## Running the Application
+To launch the program, follow one of these steps:
+~~~
+python ./app.py
+~~~
+
+
+## Troubleshooting
+If you encounter issues with the virtual environment, reset it with the following steps:
+
+### Remove broken .venv folder (if it exists):
+~~~
+rm -rf .venv
+~~~
+
+### Create a fresh virtual environment:
+~~~
+python3 -m venv .venv
+~~~
+
+### Activate the environment:
+~~~
+source .venv/bin/activate
+~~~
+
+### Install dependencies again:
+~~~
+pip install -r requirements.txt
+~~~
+
+
+## Credits
+This repository contains in-house code developed by jdremi for the Deep Sea Dogs ROV, named T.O.A.S.T., originally based on work
+from the rov-2024 project. 
+
+Feel free to submit pull requests or open issues if you find bugs or have suggestions for improvements.
