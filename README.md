@@ -10,10 +10,12 @@ Ensure you have the following installed before running the project:
 
 * Python 3.12.3
 
-* All dependencies (install using the command below in the project's root folder):
+* All dependencies (install using the commands below in the project's root folder):
 
 ~~~
-pip install -r requirements.txt
+$ python3 -m venv .venv
+$ source .venv/bin/activate
+$ pip install -r requirements.txt
 ~~~
 
 
