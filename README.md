@@ -8,18 +8,19 @@ integration.
 
 Ensure you have the following installed before running the project:
 
-    Python 3.12.3
+* Python 3.12.3
 
-    All dependencies (install using the command below in the project's root folder):
+* All dependencies (install using the command below in the project's root folder):
 
 ~~~
 pip install -r requirements.txt
 ~~~
 
+
 ## Running the Application
 To launch the program, follow one of these steps:
 ~~~
-python ./app.py
+python3 ./app.py
 ~~~
 
 
