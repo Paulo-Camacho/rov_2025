@@ -1,7 +1,10 @@
 # Arduino Mega ROV
 
-This code powers the ROV's thrusters, sensors, and user interface, optimizing hardware-software 
-integration.
+Sea Pounce ROV
+
+This code powers Sea Pounce's thrusters, sensors, and user interface, optimizing hardware-software integration. Developed for
+Cuesta College's Aqua Cats Robotics Team for the MATE ROV Competition, it refines control and responsiveness for competitive
+underwater robotics.
 
 
 ## Requirements
@@ -9,6 +12,8 @@ integration.
 Ensure you have the following installed before running the project:
 
 * Python 3.12.3
+
+* pip 24.0
 
 * All dependencies (install using the commands below in the project's root folder):
 
@@ -49,6 +54,10 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ~~~
 
+#### Trouble-shooting Ubuntu
+~~~
+$ sudo apt-get install '^libxcb.*-dev' libx11-xcb-dev libglu1-mesa-dev libxrender-dev libxi-dev libxkbcommon-dev libxkbcommon-x11-dev
+~~~
 
 ## Credits
 This repository contains in-house code developed by jdremi for the Deep Sea Dogs ROV, named T.O.A.S.T., originally based on work
