@@ -130,30 +130,55 @@ class JoystickThread(QThread):
                 "right_trigger": right_trigger
             }
 
-            # --- Claw Control (Triggers remain unchanged) ---
+            # # --- Claw Control (Triggers remain unchanged) ---
+            # if right_trigger > 0.1:
+            #     self.claw_pw = 2100  # Open claw fully
+            #     logger.debug(f"Right Trigger Pressed: Claw Opening to {self.claw_pw}")
+            # elif left_trigger > 0.1:
+            #     self.claw_pw = 1100  # Close claw fully
+            #     logger.debug(f"Left Trigger Pressed: Claw Closing to {self.claw_pw}")
+            # else:
+            #     self.claw_pw = 1500  # Hold position
+            #     logger.debug(f"No Trigger Pressed: Claw Holding at {self.claw_pw}")
+
+            # # --- Claw2 Control (Bumpers remain unchanged) ---
+            # if right_bumper:
+            #     self.claw2_pw = 2100  # Fully open
+            #     logger.debug(f"Right Bumper Pressed: Claw2 Opening to {self.claw2_pw}")
+            # elif left_bumper:
+            #     self.claw2_pw = 1100  # Fully close
+            #     logger.debug(f"Left Bumper Pressed: Claw2 Closing to {self.claw2_pw}")
+            # else:
+            #     self.claw2_pw = 1500  # Hold position
+            #     logger.debug(f"No Bumper Pressed: Claw2 Holding at {self.claw2_pw}")
+
+            # to_arduino["claw"] = self.claw_pw
+            # to_arduino["claw2"] = self.claw2_pw
+
+            # --- Claw Control (Triggers increment position) ---
+            CLAW_STEP = 7  # Adjust this value to fine-tune the step size
+            CLAW_STEP_2 = 7
+
             if right_trigger > 0.1:
-                self.claw_pw = 2100  # Open claw fully
+                self.claw_pw = min(self.claw_pw + CLAW_STEP, 2100)  # Increment up to max open
                 logger.debug(f"Right Trigger Pressed: Claw Opening to {self.claw_pw}")
             elif left_trigger > 0.1:
-                self.claw_pw = 1100  # Close claw fully
+                self.claw_pw = max(self.claw_pw - CLAW_STEP, 1100)  # Decrement down to fully closed
                 logger.debug(f"Left Trigger Pressed: Claw Closing to {self.claw_pw}")
-            else:
-                self.claw_pw = 1500  # Hold position
-                logger.debug(f"No Trigger Pressed: Claw Holding at {self.claw_pw}")
 
-            # --- Claw2 Control (Bumpers remain unchanged) ---
+            # --- Claw2 Control (Bumpers increment position) ---
             if right_bumper:
-                self.claw2_pw = 2100  # Fully open
+                self.claw2_pw = min(self.claw2_pw + CLAW_STEP_2, 2100)  # Increment up to max open
                 logger.debug(f"Right Bumper Pressed: Claw2 Opening to {self.claw2_pw}")
             elif left_bumper:
-                self.claw2_pw = 1100  # Fully close
+                self.claw2_pw = max(self.claw2_pw - CLAW_STEP_2, 1100)  # Decrement down to fully closed
                 logger.debug(f"Left Bumper Pressed: Claw2 Closing to {self.claw2_pw}")
-            else:
-                self.claw2_pw = 1500  # Hold position
-                logger.debug(f"No Bumper Pressed: Claw2 Holding at {self.claw2_pw}")
 
+            # Preserve last claw positions
             to_arduino["claw"] = self.claw_pw
             to_arduino["claw2"] = self.claw2_pw
+
+
 
             current_time = time.time()
             if current_time - self.__last_sent_time > ARDUINO_SEND_TIMER_MIN:
