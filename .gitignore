@@ -1,5 +1,8 @@
 # ─── Python artifacts ─────────────────────────────────────────────────────────
 
+#images
+rov_images/*.*
+
 # Byte-compiled / optimized / DLL files
 **/__pycache__/
 **/*.py[cod]

@@ -7,11 +7,11 @@ Servo rightThruster;
 Servo leftUpThruster;
 Servo rightUpThruster;
 
-// Claw servos (new naming)
-Servo claw;         // This servo is controlled by "claw_trigger"
+// Claw servo
+Servo claw;
 const byte clawPin = 29; // J9
 
-Servo claw2;        // This servo is controlled by "claw_bumper"
+Servo claw2;  // Second claw servo
 const byte claw2Pin = 25; 
 
 // Explicit thruster pin assignments
@@ -36,14 +36,14 @@ void setup() {
   rightUpThruster.attach(rightUpThrusterPin);
   rightUpThruster.writeMicroseconds(1500);
 
-  // Setup claw servos
+  // Claw setup
   claw.attach(clawPin);
   claw.writeMicroseconds(1500);
-
+  // Attach second claw servo (on J7 / pin 27)
   claw2.attach(claw2Pin);
   claw2.writeMicroseconds(1500); // Neutral position
 
-  delay(7000);  // Calibration delay for ESCs and claws
+  delay(7000);  // ESC and claw calibration time
 }
 
 void loop() {
@@ -53,22 +53,19 @@ void loop() {
   StaticJsonDocument<300> doc;
   if (deserializeJson(doc, json)) return;
 
-  // Set thruster outputs from the "axisInfo" array, if available.
   JsonArray axis = doc["axisInfo"];
   if (axis.size() >= 4) { 
-    leftThruster.writeMicroseconds(axis[0]);
-    rightThruster.writeMicroseconds(axis[1]);
-    leftUpThruster.writeMicroseconds(axis[2]);
-    rightUpThruster.writeMicroseconds(axis[3]);
+    leftThruster.writeMicroseconds(axis[0]);  // Horizontal thrusters (Axis 1)
+    rightThruster.writeMicroseconds(axis[1]); // Horizontal thrusters (Axis 1)
+    leftUpThruster.writeMicroseconds(axis[2]); // Top vertical thrusters (Axis 4)
+    rightUpThruster.writeMicroseconds(axis[3]); // Top vertical thrusters (Axis 4)
   }
-  
-  // Use new key names for claw control.
-  if (doc.containsKey("claw_trigger")) {
-    claw.writeMicroseconds(doc["claw_trigger"]);
+  if (doc.containsKey("claw")) {
+    claw.writeMicroseconds(doc["claw"]);
   }
 
-  if (doc.containsKey("claw_bumper")) {  
-    claw2.writeMicroseconds(doc["claw_bumper"]);
+  if (doc.containsKey("claw2")) {  
+    claw2.writeMicroseconds(doc["claw2"]);  // Control second claw
   }
 
   StaticJsonDocument<50> ack;
