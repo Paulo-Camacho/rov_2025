@@ -208,3 +208,4 @@ class JoystickThread(QThread):
         self.__vertical_thrust_label.setText(
             f"Top Left: {pulsewidths.get('topleftthruster')}, Top Right: {pulsewidths.get('toprightthruster')}"
         )
+
