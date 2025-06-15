@@ -55,13 +55,13 @@ class VideoWidget(QWidget):
         threshold = 0.05
         # lines = ["joystick axis details: "]
         lines = [
-            "Joystick Axis Details:\n"
+            "Joystick Axis Mapping Details:\n"
             "Left joystick:\n"
             "Axis 0 → Left/Right movement (X-axis)\n"
             "Axis 1 → Up/Down movement (Y-axis)\n"
             "Right joystick:\n"
             "Axis 3 → Left/Right movement (X-axis)\n"
-            "Axis 4 → Up/Down movement (Y-axis)\n\n\n\n"
+            "Axis 4 → Up/Down movement (Y-axis)\n\n\n\n\n"
             "Current Axis movement:"
         ]
 

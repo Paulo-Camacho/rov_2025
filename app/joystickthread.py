@@ -170,7 +170,7 @@ class JoystickThread(QThread):
             left_thruster = horizontal_base
             right_thruster = horizontal_base - h_offset
         else:
-            left_thruster = horizontal_base + abs(h_offset)
+            left_thruster = horizontal_base - abs(h_offset)
             right_thruster = horizontal_base
 
         # Vertical thrusters
