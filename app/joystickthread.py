@@ -165,11 +165,11 @@ class JoystickThread(QThread):
 
         # Top thrusters (Axis 3 pitch + Axis 4 lift base)
         if v_value > tilt_threshold:
-            left_top = self.__map_to_pwm(-v_value)
-            right_top = vertical_base
-        elif v_value < -tilt_threshold:
             left_top = vertical_base
-            right_top = self.__map_to_pwm(v_value)
+            right_top = self.__map_to_pwm(-v_value)
+        elif v_value < -tilt_threshold:
+            left_top = self.__map_to_pwm(v_value)
+            right_top = vertical_base
         else:
             left_top = right_top = vertical_base
 
