@@ -64,3 +64,4 @@ This repository contains in-house code developed by jdremi for the Deep Sea Dogs
 from the rov-2024 project. 
 
 Feel free to submit pull requests or open issues if you find bugs or have suggestions for improvements.
+Cuesta College's Aqua Cats Robotics Team for the MATE ROV Competition, it refines control and responsiveness for competitive

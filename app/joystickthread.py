@@ -191,17 +191,14 @@ class JoystickThread(QThread):
         return self.__map_to_pwm(val) - 1500
 
     def __update_thrust_labels(self, pulsewidths):
+
+
         self.__left_right_thrust_label.setText(
             f"Top Left Thruster: {pulsewidths.get('topleftthruster')}\n\nLeft Thruster: {pulsewidths.get('leftthruster')}"
         )
         self.__vertical_thrust_label.setText(
             f"Top Right Thruster: {pulsewidths.get('toprightthruster')}\n\nRight Thruster: {pulsewidths.get('rightthruster')}"
         )
-    # def __update_thrust_labels(self, pulsewidths):
-    #     self.__left_right_thrust_label.setText(
-    #         f"Left  Thruster:{pulsewidths.get('leftthruster')}\nRight Thruster:{pulsewidths.get('rightthruster')}"
-    #     )
-    #     self.__vertical_thrust_label.setText(
-    #         f"Top Left  Thruster:{pulsewidths.get('topleftthruster')}\nTop Right Thruster:{pulsewidths.get('toprightthruster')}"
-    #     )
+        
+      
 
