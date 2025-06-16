@@ -175,11 +175,11 @@ class JoystickThread(QThread):
 
         # Vertical thrusters
         if v_value > threshold:
-            left_top = self.__map_to_pwm(v_value)
+            left_top = self.__map_to_pwm(-v_value)
             right_top = vertical_base
         elif v_value < -threshold:
             left_top = vertical_base
-            right_top = self.__map_to_pwm(abs(v_value))
+            right_top = self.__map_to_pwm(v_value)
         else:
             left_top = vertical_base
             right_top = vertical_base
