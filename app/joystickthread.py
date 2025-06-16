@@ -151,7 +151,7 @@ class JoystickThread(QThread):
 
         self.joystick_change_signal.emit({
             "connected": "True",
-            "joystickName": "Controller: " + self.__joystick.get_name(),
+            "joystickName": "" + self.__joystick.get_name(),
             "axis_readings": axis_labels,
             "axisInfo": to_arduino["axisInfo"],
             "claw_trigger": self.claw_pw,

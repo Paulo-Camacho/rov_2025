@@ -87,7 +87,7 @@ class MainWindow(QMainWindow):
             lambda data: self.video_widget.update_axis_info(data.get("axis_readings", {}), data)
         )
         self.joystick_thread.joystick_change_signal.connect(
-            lambda data: self.status_label.setText(f"Controller: {data.get('joystickName', 'N/A')}")
+            lambda data: self.status_label.setText(f"{data.get('joystickName', 'N/A')}")
         )
         self.arduino_thread.arduino_data_channel_signal.connect(self.handle_arduino_data)
         
