@@ -10,7 +10,6 @@ logger = logging.getLogger(__name__)
 GREEN_TEXT_CSS = "color: green"
 RED_TEXT_CSS = "color: red"
 RESTING_PULSEWIDTH = 1500.00
-DEADZONE_MIN = 0.75
 PWM_DEADZONE_MIN = 0.1
 ARDUINO_SEND_TIMER_MIN = 0.5
 
@@ -30,16 +29,15 @@ class JoystickThread(QThread):
         self.__arduino_thread = arduino_thread
         self.__video_thread = video_thread
         self.__last_sent_time = time.time()
-        # Initialize claw variables.
-        self.claw_pw = 1500    # For "claw_trigger"
-        self.claw2_pw = 1500   # For "claw_bumper"
+        self.claw_pw = 1500
+        self.claw2_pw = 1500
 
         pygame.init()
         self._wait_for_joystick_timer = QTimer(self)
         self._wait_for_joystick_timer.timeout.connect(self._wait_for_joystick)
 
         if pygame.joystick.get_count() == 0:
-            logger.warn("No joystick detected! Waiting for joysticks...")
+            logger.warning("No joystick detected! Waiting for joysticks...")
             self._wait_for_joystick_timer.start(1000)
         else:
             self._initialize_joystick()
@@ -71,7 +69,7 @@ class JoystickThread(QThread):
     @pyqtSlot(dict)
     def handle_joystick(self, commands):
         if not commands.get("connected"):
-            logger.warn("Joystick disconnected")
+            logger.warning("Joystick disconnected")
 
     def check_joystick_input(self):
         if self.__joystick is None or pygame.joystick.get_count() == 0:
@@ -83,7 +81,12 @@ class JoystickThread(QThread):
 
         pygame.event.pump()
 
-        # Read trigger and bumper values.
+        # Read axis values
+        horizontal_base = self.__joystick.get_axis(1) or 0
+        h_discrete = self.__joystick.get_axis(0) or 0
+        vertical_input = self.__joystick.get_axis(4) or 0
+        v_discrete = self.__joystick.get_axis(3) or 0
+
         left_trigger = self.__joystick.get_axis(2) or 0
         right_trigger = self.__joystick.get_axis(5) or 0
         left_bumper = self.__joystick.get_button(4)
@@ -93,16 +96,9 @@ class JoystickThread(QThread):
             if event.type == pygame.JOYBUTTONDOWN and event.button == 3:
                 self.__video_thread.save_screenshot()
 
-        # Read axes. Although we still read all for control calculations,
-        # only Axis 0 (Yaw) and Axis 4 (Vertical) will be shown in the GUI.
-        horizontal_base = self.__joystick.get_axis(1) or 0    # Axis 1 (Forward/Backward, used internally)
-        h_discrete     = self.__joystick.get_axis(0) or 0     # Axis 0 (Yaw) – for display.
-        vertical_base  = self.__joystick.get_axis(4) or 0     # Axis 4 (Vertical – will be inverted for display)
-        v_discrete     = self.__joystick.get_axis(3) or 0     # Axis 3 (Pitch, used internally)
-
         axis_info = {
             "horizontal": horizontal_base,
-            "vertical": vertical_base,
+            "vertical": vertical_input,
             "h_discrete": h_discrete,
             "v_discrete": v_discrete
         }
@@ -119,19 +115,15 @@ class JoystickThread(QThread):
             ],
             "left_trigger": left_trigger,
             "right_trigger": right_trigger,
-            # Use new key names for discrete claw controls.
             "claw_trigger": self.claw_pw,
             "claw_bumper": self.claw2_pw
         }
 
         CLAW_STEP = 7
-        # Apply separate discrete logic for claw_trigger using triggers.
         if left_trigger > 0.1:
             self.claw_pw = min(self.claw_pw + CLAW_STEP, 2100)
         elif right_trigger > 0.1:
             self.claw_pw = max(self.claw_pw - CLAW_STEP, 1100)
-
-        # Apply separate discrete logic for claw_bumper using bumpers.
         if left_bumper:
             self.claw2_pw = min(self.claw2_pw + CLAW_STEP, 2100)
         elif right_bumper:
@@ -142,16 +134,14 @@ class JoystickThread(QThread):
             self.__arduino_thread.handle_data(to_arduino)
             self.__last_sent_time = current_time
 
-        # Build a dictionary for display with only Axis 0 and Axis 4.
-        # Invert Axis 4 to match your physical joystick direction.
         axis_labels = {
             "Axis 0 (Left Stick X - Yaw)": h_discrete,
-            "Axis 4 (Right Stick X - Vertical)": -vertical_base
+            "Axis 4 (Right Stick X - Vertical)": -vertical_input
         }
 
         self.joystick_change_signal.emit({
             "connected": "True",
-            "joystickName": "" + self.__joystick.get_name(),
+            "joystickName": "Controller: " + self.__joystick.get_name(),
             "axis_readings": axis_labels,
             "axisInfo": to_arduino["axisInfo"],
             "claw_trigger": self.claw_pw,
@@ -163,7 +153,7 @@ class JoystickThread(QThread):
         vertical_base = self.__map_to_pwm(axis_info.get("vertical"))
         h_offset = self.__map_to_differential(axis_info.get("h_discrete"))
         v_value = axis_info.get("v_discrete") or 0
-        threshold = 0.05
+        tilt_threshold = 0.5
 
         # Horizontal thrusters
         if h_offset >= 0:
@@ -173,16 +163,15 @@ class JoystickThread(QThread):
             left_thruster = horizontal_base - abs(h_offset)
             right_thruster = horizontal_base
 
-        # Vertical thrusters
-        if v_value > threshold:
+        # Top thrusters (Axis 3 pitch + Axis 4 lift base)
+        if v_value > tilt_threshold:
             left_top = self.__map_to_pwm(-v_value)
             right_top = vertical_base
-        elif v_value < -threshold:
+        elif v_value < -tilt_threshold:
             left_top = vertical_base
             right_top = self.__map_to_pwm(v_value)
         else:
-            left_top = vertical_base
-            right_top = vertical_base
+            left_top = right_top = vertical_base
 
         return {
             "leftthruster": round(left_thruster),
@@ -192,7 +181,7 @@ class JoystickThread(QThread):
         }
 
     def __map_to_pwm(self, val):
-        if val is None or (val >= -PWM_DEADZONE_MIN and val <= PWM_DEADZONE_MIN):
+        if val is None or abs(val) < PWM_DEADZONE_MIN:
             return 1500
         return int(400 * (val + 1) + 1100)
 
@@ -203,9 +192,16 @@ class JoystickThread(QThread):
 
     def __update_thrust_labels(self, pulsewidths):
         self.__left_right_thrust_label.setText(
-            f"Left Thruster: {pulsewidths.get('leftthruster')}, Right Thruster: {pulsewidths.get('rightthruster')}"
+            f"Top Left Thruster: {pulsewidths.get('topleftthruster')}\n\nLeft Thruster: {pulsewidths.get('leftthruster')}"
         )
         self.__vertical_thrust_label.setText(
-            f"Top Left: {pulsewidths.get('topleftthruster')}, Top Right: {pulsewidths.get('toprightthruster')}"
+            f"Top Right Thruster: {pulsewidths.get('toprightthruster')}\n\nRight Thruster: {pulsewidths.get('rightthruster')}"
         )
+    # def __update_thrust_labels(self, pulsewidths):
+    #     self.__left_right_thrust_label.setText(
+    #         f"Left  Thruster:{pulsewidths.get('leftthruster')}\nRight Thruster:{pulsewidths.get('rightthruster')}"
+    #     )
+    #     self.__vertical_thrust_label.setText(
+    #         f"Top Left  Thruster:{pulsewidths.get('topleftthruster')}\nTop Right Thruster:{pulsewidths.get('toprightthruster')}"
+    #     )
 

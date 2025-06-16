@@ -62,8 +62,8 @@ class VideoWidget(QWidget):
             "Right joystick:\n"
             "Axis 3 → Left/Right movement (X-axis)\n"
             "Axis 4 → Up/Down movement (Y-axis)\n"
-            "\n-----------------------------------------------------------------------------\n\n\n"
-            "DEBUGGING JOYSTICK INFO:"
+            "\n------------------------------------------------------------------------------------\n\n\n"
+            "CONTROLLER DEBUG INFORMATION:"
         ]
 
         for axis, value in axis_info.items():
@@ -90,6 +90,8 @@ class VideoWidget(QWidget):
                 claw_state = "Max Open (Fully released)"
             elif claw_val <= 1100:
                 claw_state = "Max Closed (Fully gripped)"
+            elif claw_val <= 1550 and claw_val >= 1450:
+                claw_state = "Neutral grip"
             else:
                 claw_state = "Intermediate (Partial grip)"
             lines.append(f"Claw Trigger: {claw_val}  → {claw_state}")
@@ -100,6 +102,8 @@ class VideoWidget(QWidget):
                 claw2_state = "Max Open (Fully released)"
             elif claw2_val <= 1100:
                 claw2_state = "Max Closed (Fully gripped)"
+            elif claw2_val <= 1550 and claw2_val >= 1450:
+                claw2_state = "Neutral grip"
             else:
                 claw2_state = "Intermediate (Partial grip)"
             lines.append(f"Claw Bumper: {claw2_val}  → {claw2_state}")
